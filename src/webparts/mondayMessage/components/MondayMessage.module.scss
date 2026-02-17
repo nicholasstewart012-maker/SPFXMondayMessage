@@ -1,0 +1,140 @@
+@import '~@fluentui/react/dist/sass/References.scss';
+
+.mondayMessage {
+  overflow: hidden;
+  padding: 1em;
+  color: "[theme:bodyText, default: #323130]";
+  color: var(--bodyText);
+  font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
+
+  &.teams {
+    font-family: $ms-font-family-fallbacks;
+  }
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: "[theme:themePrimary, default: #0078d4]";
+  color: "[theme:white, default: #ffffff]";
+  padding: 10px;
+}
+
+.headerImage {
+  max-height: 80px;
+  width: auto;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  flex-grow: 1;
+  text-align: center;
+}
+
+.collapseButton {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* Content Body */
+.bodyContent {
+  text-align: center;
+  padding: 0 20px;
+}
+
+.quote {
+  font-style: italic;
+  margin-bottom: 20px;
+  color: "[theme:themeDarkAlt, default: #106ebe]";
+}
+
+.reflectionSection {
+  margin-bottom: 20px;
+}
+
+.reflectionHeader {
+  font-weight: bold;
+  text-transform: uppercase;
+  color: "[theme:themePrimary, default: #0078d4]";
+  margin-bottom: 10px;
+}
+
+.reflectionText {
+  line-height: 1.5;
+}
+
+.coreBehavior {
+  margin-top: 20px;
+  font-weight: bold;
+
+  a {
+    text-decoration: none;
+    color: "[theme:themePrimary, default: #0078d4]";
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+/* Signatures */
+.signatures {
+  display: flex;
+  justify-content: space-around;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.signatureItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.sigName {
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.sigTitle {
+  font-size: 11px;
+  color: "[theme:neutralSecondary, default: #605e5c]";
+}
+
+/* Images */
+.midImageContainer, .footerImageContainer {
+  text-align: center;
+}
+
+.midImage, .footerImage {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Collapsed State */
+.collapsedBanner {
+  background-color: "[theme:themeLighterAlt, default: #eff6fc]";
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid "[theme:themeLight, default: #c7e0f4]";
+}
+
+.expiredMessage {
+  font-style: italic;
+  color: "[theme:neutralSecondary, default: #605e5c]";
+}

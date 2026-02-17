@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "monday-message-client-side-solution",
+    "id": "7e44f312-e030-4ce1-872c-587358e31c59",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.22.2"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "monday-message description"
+      },
+      "longDescription": {
+        "default": "monday-message description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "monday-message Feature",
+        "description": "The feature that activates elements of the monday-message solution.",
+        "id": "4d3534e7-8876-48a2-a156-1a33ccc21ace",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/monday-message.sppkg"
+  }
+}

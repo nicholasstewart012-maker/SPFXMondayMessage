@@ -1,0 +1,23 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "whichFolder": "subdir",
+    "solutionName": "monday-message",
+    "environment": "spo",
+    "isDomainIsolated": false,
+    "useGulp": false,
+    "componentType": "webpart",
+    "template": "react",
+    "componentName": "MondayMessage",
+    "componentDescription": "Monday Message Web Part",
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "22.18.0",
+    "sdksVersions": {},
+    "version": "1.22.2",
+    "libraryName": "monday-message",
+    "libraryId": "7e44f312-e030-4ce1-872c-587358e31c59",
+    "packageManager": "npm",
+    "solutionShortDescription": "monday-message description",
+    "skipFeatureDeployment": true
+  }
+}
