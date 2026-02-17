@@ -40,4 +40,7 @@ export interface IMondayMessageProps {
   allowCollapse: boolean;
   defaultCollapsed: boolean;
   collapsedLabel: string;
+
+  // Debug
+  debug: boolean;
 }

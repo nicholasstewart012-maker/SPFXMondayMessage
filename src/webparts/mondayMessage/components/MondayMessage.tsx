@@ -30,75 +30,116 @@ const MondayMessage: React.FC<IMondayMessageProps> = (props) => {
     allowCollapse,
     defaultCollapsed,
     collapsedLabel,
-    hasTeamsContext
+    hasTeamsContext,
+    debug
   } = props;
 
   const [isCollapsed, setIsCollapsed] = React.useState<boolean>(defaultCollapsed);
-  const [isVisible, setIsVisible] = React.useState<boolean>(true);
-  const [isExpired, setIsExpired] = React.useState<boolean>(false);
+  const [isScheduledVisible, setIsScheduledVisible] = React.useState<boolean>(true); // Does schedule say "Show"?
+  const [debugInfo, setDebugInfo] = React.useState<string>("");
+
+  // Helper to normalize SharePoint image URLs
+  const normalizeImageUrl = (url: string | undefined): string | undefined => {
+    if (!url) return undefined;
+    let cleanUrl = url.trim();
+    if (!cleanUrl) return undefined;
+
+    // Check for SharePoint rendering patterns (only if not already pointing to a file extension we recognize as image, though SP URLs often don't have them)
+    // If it is a /:i:/ or /:u:/ link, or has ?web=1, we might need to force download behavior for it to render in an <img> tag.
+    // Simple heuristic: if it looks like a customized viewing link, append ?download=1
+    // Avoiding double append if it already exists.
+
+    const hasQuery = cleanUrl.indexOf('?') > -1;
+    const isSharingLink = cleanUrl.indexOf('/:i:/') > -1 || cleanUrl.indexOf('/:u:/') > -1 || cleanUrl.indexOf('sharepoint.com') > -1;
+
+    if (isSharingLink && cleanUrl.toLowerCase().indexOf('download=1') === -1) {
+      cleanUrl += hasQuery ? '&download=1' : '?download=1';
+    }
+
+    return cleanUrl;
+  };
+
+  const processedHeaderUrl = normalizeImageUrl(headerImageUrl);
 
   const checkSchedule = (): void => {
-    // 1. Manual Override takes precedence
+    let visibleBound = true;
+    let overrideState = "None";
+
+    // 1. Manual Override logic
     if (manualOverride === 'ForceShow') {
-      setIsVisible(true);
-      setIsExpired(false);
-      return;
-    }
-    if (manualOverride === 'ForceHide') {
-      setIsVisible(false);
-      setIsExpired(false);
-      return;
-    }
-
-    // 2. Schedule Check
-    if (!enableSchedule) {
-      setIsVisible(true);
-      setIsExpired(false);
-      return;
-    }
-
-    // Check if it is Monday in target timezone
-    // 'visibleDays' is assumed 'Monday' for now based on requirements being simple
-    const isTodayMonday = DateService.isMonday(timeZone || 'America/Chicago');
-
-    if (isTodayMonday) {
-      setIsVisible(true);
-      setIsExpired(false);
+      visibleBound = true;
+      overrideState = "ForceShow";
+    } else if (manualOverride === 'ForceHide') {
+      visibleBound = false;
+      overrideState = "ForceHide";
     } else {
-      // Not Monday
-      if (hideMode === 'Hidden') {
-        setIsVisible(false);
-        setIsExpired(true);
+      // 2. Schedule Logic
+      if (!enableSchedule) {
+        visibleBound = true; // Schedule disabled = always show
       } else {
-        // Collapsed mode
-        setIsVisible(true);
-        setIsExpired(true);
-        setIsCollapsed(true); // Force collapse if expired but showing
+        // Schedule Enabled
+        const isTodayMonday = DateService.isMonday(timeZone || 'America/Chicago');
+        visibleBound = isTodayMonday;
       }
+    }
+
+    setIsScheduledVisible(visibleBound);
+
+    // Initial Collapse State Logic:
+    // Only default-collapse if currently visible. 
+    // If hidden/expired, we don't care about defaultCollapsed yet (handled in render).
+    // We only reset isCollapsed when props change significantly, usually we let user toggle. 
+    // However, if we switch from Hidden -> Visible, we might want to respect defaultCollapsed.
+    // For now, we rely on the useEffect below to reset state when prefs change.
+
+    // Debug Calculation
+    if (debug) {
+      const now = new Date();
+      const info = `
+        Debug Mode: On
+        Time (Local): ${now.toLocaleString()}
+        TimeZone: ${timeZone}
+        Manual Override: ${overrideState}
+        Enable Schedule: ${enableSchedule}
+        Is Monday (Calc): ${DateService.isMonday(timeZone || 'America/Chicago')}
+        -> Scheduled Visible: ${visibleBound}
+        Hide Mode: ${hideMode}
+        Default Collapsed: ${defaultCollapsed}
+        Current Collapsed State: ${isCollapsed}
+        Header URL (Raw): ${headerImageUrl}
+        Header URL (Norm): ${processedHeaderUrl}
+        `;
+      setDebugInfo(info);
     }
   };
 
   React.useEffect(() => {
     checkSchedule();
-  }, [enableSchedule, timeZone, visibleDays, manualOverride]);
+  }, [enableSchedule, timeZone, visibleDays, manualOverride, debug, headerImageUrl]);
 
+  // Reset collapse state only when the default preference changes
   React.useEffect(() => {
+    // Only reset to default if we are visible. 
+    // If we are expired-collapsed, that state is forced in render.
     setIsCollapsed(defaultCollapsed);
   }, [defaultCollapsed]);
-
-
 
   const toggleCollapse = (): void => {
     setIsCollapsed(!isCollapsed);
   };
 
-  // If completely hidden, render nothing
-  if (!isVisible) {
+  // --- RENDER LOGIC ---
+
+  // 1. Completely Hidden (Scheduled=False AND HideMode=Hidden)
+  if (!isScheduledVisible && hideMode === 'Hidden') {
+    if (debug) {
+      return <div className={styles.mondayMessage} style={{ background: 'yellow' }}><pre>{debugInfo}</pre><div style={{ color: 'red' }}>HIDDEN (Debug view)</div></div>;
+    }
     return null;
   }
 
-  // Render Expired Banner (if hideMode == Collapsed and isExpired)
-  if (isExpired && hideMode === 'Collapsed') {
+  // 2. Expired Banner (Scheduled=False AND HideMode=Collapsed)
+  if (!isScheduledVisible && hideMode === 'Collapsed') {
     return (
       <div className={`${styles.mondayMessage} ${hasTeamsContext ? styles.teams : ''}`}>
         <div className={styles.container}>
@@ -106,13 +147,16 @@ const MondayMessage: React.FC<IMondayMessageProps> = (props) => {
             <span className={styles.expiredMessage}>
               {titleText || "Monday Message"} (Expired)
             </span>
+            {debug && <div style={{ fontSize: '10px', whiteSpace: 'pre-wrap' }}>{debugInfo}</div>}
           </div>
         </div>
       </div>
     );
   }
 
-  // Render Collapsed State (user toggled)
+  // 3. Visible Content (Scheduled=True)
+
+  // 3a. User Collapsed
   if (isCollapsed && allowCollapse) {
     return (
       <div className={`${styles.mondayMessage} ${hasTeamsContext ? styles.teams : ''}`}>
@@ -123,20 +167,36 @@ const MondayMessage: React.FC<IMondayMessageProps> = (props) => {
               <Icon iconName="ChevronDown" />
             </button>
           </div>
+          {debug && <div style={{ fontSize: '10px', background: '#eee', padding: '5px', whiteSpace: 'pre-wrap' }}>{debugInfo}</div>}
         </div>
       </div>
     );
   }
 
-  // Render Full Content
+  // 3b. Fully Expanded
   return (
     <div className={`${styles.mondayMessage} ${hasTeamsContext ? styles.teams : ''}`}>
       <div className={styles.container}>
+        {debug && <div style={{ fontSize: '10px', background: '#eee', padding: '5px', whiteSpace: 'pre-wrap' }}>{debugInfo}</div>}
+
         {/* Header */}
         <div className={styles.header}>
-          {headerImageUrl && (
-            <img src={headerImageUrl} alt={headerImageAlt || "Header"} className={styles.headerImage} />
+          {processedHeaderUrl ? (
+            <img
+              src={processedHeaderUrl}
+              alt={headerImageAlt || ""}
+              className={styles.headerImage}
+              onError={(e) => {
+                console.warn("MondayMessage: Header image failed to load", processedHeaderUrl);
+                e.currentTarget.style.display = 'none'; // Hide broken image
+                // Optional: Show error placeholder in debug only?
+              }}
+            />
+          ) : (
+            /* No image provided: render nothing or placeholder only if debug/edit? For now render nothing */
+            null
           )}
+
           <div className={styles.title}>{titleText || "Monday Message"}</div>
           {allowCollapse && (
             <button className={styles.collapseButton} onClick={toggleCollapse} aria-label="Collapse">

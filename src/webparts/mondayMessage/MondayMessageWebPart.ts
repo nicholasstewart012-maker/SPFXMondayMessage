@@ -51,6 +51,9 @@ export interface IMondayMessageWebPartProps {
   allowCollapse: boolean;
   defaultCollapsed: boolean;
   collapsedLabel: string;
+
+  // Debug
+  debug: boolean;
 }
 
 export default class MondayMessageWebPart extends BaseClientSideWebPart<IMondayMessageWebPartProps> {
@@ -72,6 +75,8 @@ export default class MondayMessageWebPart extends BaseClientSideWebPart<IMondayM
 
     ReactDom.render(element, this.domElement);
   }
+
+  // ... (unchanged methods) ...
 
   protected onInit(): Promise<void> {
     return this._getEnvironmentMessage().then(message => {
@@ -261,6 +266,10 @@ export default class MondayMessageWebPart extends BaseClientSideWebPart<IMondayM
                 }),
                 PropertyPaneTextField('collapsedLabel', {
                   label: "Collapsed Label"
+                }),
+                PropertyPaneToggle('debug', {
+                  label: "Debug Mode",
+                  checked: false
                 })
               ]
             }
