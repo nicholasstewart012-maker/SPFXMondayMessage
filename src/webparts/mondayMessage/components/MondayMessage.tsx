@@ -4,6 +4,22 @@ import type { IMondayMessageProps } from './IMondayMessageProps';
 import { DateService } from '../services/DateService';
 import { Icon } from '@fluentui/react/lib/Icon';
 
+// Helper to normalize SharePoint image URLs
+const normalizeImageUrl = (url: string | undefined): string | undefined => {
+  if (!url) return undefined;
+  let cleanUrl = url.trim();
+  if (!cleanUrl) return undefined;
+
+  const hasQuery = cleanUrl.indexOf('?') > -1;
+  const isSharingLink = cleanUrl.indexOf('/:i:/') > -1 || cleanUrl.indexOf('/:u:/') > -1 || cleanUrl.indexOf('sharepoint.com') > -1;
+
+  if (isSharingLink && cleanUrl.toLowerCase().indexOf('download=1') === -1) {
+    cleanUrl += hasQuery ? '&download=1' : '?download=1';
+  }
+
+  return cleanUrl;
+};
+
 const MondayMessage: React.FC<IMondayMessageProps> = (props) => {
   const {
     enableSchedule,
@@ -37,32 +53,35 @@ const MondayMessage: React.FC<IMondayMessageProps> = (props) => {
   // CAST STYLES TO ANY TO BYPASS BUILD ISSUES WITH HEFT/SCSS TYPINGS
   const s: any = styles;
 
-  const [isCollapsed, setIsCollapsed] = React.useState<boolean>(defaultCollapsed);
-  const [isScheduledVisible, setIsScheduledVisible] = React.useState<boolean>(true); // Does schedule say "Show"?
+  // State Initialization
+  const [isCollapsed, setIsCollapsed] = React.useState<boolean>(() => {
+    if (!allowCollapse) return false;
+    return !!defaultCollapsed;
+  });
+
+  const [isScheduledVisible, setIsScheduledVisible] = React.useState<boolean>(true);
+
+  // Debug State Variables
+  const [debugOverrideState, setDebugOverrideState] = React.useState<string>("None");
+  const [debugVisibleBound, setDebugVisibleBound] = React.useState<boolean>(true);
   const [debugInfo, setDebugInfo] = React.useState<string>("");
 
-  // Helper to normalize SharePoint image URLs
-  const normalizeImageUrl = (url: string | undefined): string | undefined => {
-    if (!url) return undefined;
-    let cleanUrl = url.trim();
-    if (!cleanUrl) return undefined;
-
-    // Check for SharePoint rendering patterns (only if not already pointing to a file extension we recognize as image, though SP URLs often don't have them)
-    // If it is a /:i:/ or /:u:/ link, or has ?web=1, we might need to force download behavior for it to render in an <img> tag.
-    // Simple heuristic: if it looks like a customized viewing link, append ?download=1
-    // Avoiding double append if it already exists.
-
-    const hasQuery = cleanUrl.indexOf('?') > -1;
-    const isSharingLink = cleanUrl.indexOf('/:i:/') > -1 || cleanUrl.indexOf('/:u:/') > -1 || cleanUrl.indexOf('sharepoint.com') > -1;
-
-    if (isSharingLink && cleanUrl.toLowerCase().indexOf('download=1') === -1) {
-      cleanUrl += hasQuery ? '&download=1' : '?download=1';
-    }
-
-    return cleanUrl;
-  };
-
   const processedHeaderUrl = normalizeImageUrl(headerImageUrl);
+
+  // Sync state with props
+  React.useEffect(() => {
+    if (!allowCollapse) {
+      setIsCollapsed(false);
+    } else {
+      setIsCollapsed(!!defaultCollapsed);
+    }
+  }, [defaultCollapsed, allowCollapse]);
+
+  const toggleCollapse = (): void => {
+    if (allowCollapse) {
+      setIsCollapsed(prev => !prev);
+    }
+  };
 
   const checkSchedule = (): void => {
     let visibleBound = true;
@@ -78,22 +97,16 @@ const MondayMessage: React.FC<IMondayMessageProps> = (props) => {
     } else {
       // 2. Schedule Logic
       if (!enableSchedule) {
-        visibleBound = true; // Schedule disabled = always show
+        visibleBound = true;
       } else {
-        // Schedule Enabled
         const isTodayMonday = DateService.isMonday(timeZone || 'America/Chicago');
         visibleBound = isTodayMonday;
       }
     }
 
     setIsScheduledVisible(visibleBound);
-
-    // Initial Collapse State Logic:
-    // Only default-collapse if currently visible. 
-    // If hidden/expired, we don't care about defaultCollapsed yet (handled in render).
-    // We only reset isCollapsed when props change significantly, usually we let user toggle. 
-    // However, if we switch from Hidden -> Visible, we might want to respect defaultCollapsed.
-    // For now, we rely on the useEffect below to reset state when prefs change.
+    setDebugOverrideState(overrideState);
+    setDebugVisibleBound(visibleBound);
 
     // Debug Calculation
     if (debug) {
@@ -102,11 +115,12 @@ const MondayMessage: React.FC<IMondayMessageProps> = (props) => {
         Debug Mode: On
         Time (Local): ${now.toLocaleString()}
         TimeZone: ${timeZone}
-        Manual Override: ${overrideState}
+        Manual Override: ${debugOverrideState}
         Enable Schedule: ${enableSchedule}
         Is Monday (Calc): ${DateService.isMonday(timeZone || 'America/Chicago')}
-        -> Scheduled Visible: ${visibleBound}
+        -> Scheduled Visible: ${debugVisibleBound}
         Hide Mode: ${hideMode}
+        Allow Collapse: ${allowCollapse}
         Default Collapsed: ${defaultCollapsed}
         Current Collapsed State: ${isCollapsed}
         Header URL (Raw): ${headerImageUrl}
@@ -118,18 +132,7 @@ const MondayMessage: React.FC<IMondayMessageProps> = (props) => {
 
   React.useEffect(() => {
     checkSchedule();
-  }, [enableSchedule, timeZone, visibleDays, manualOverride, debug, headerImageUrl]);
-
-  // Reset collapse state only when the default preference changes
-  React.useEffect(() => {
-    // Only reset to default if we are visible. 
-    // If we are expired-collapsed, that state is forced in render.
-    setIsCollapsed(defaultCollapsed);
-  }, [defaultCollapsed]);
-
-  const toggleCollapse = (): void => {
-    setIsCollapsed(!isCollapsed);
-  };
+  }, [enableSchedule, timeZone, visibleDays, manualOverride, debug, headerImageUrl, isCollapsed, allowCollapse, defaultCollapsed]);
 
   // --- RENDER LOGIC ---
 
@@ -159,14 +162,17 @@ const MondayMessage: React.FC<IMondayMessageProps> = (props) => {
 
   // 3. Visible Content (Scheduled=True)
 
-  // 3a. User Collapsed
+  // 3a. User Collapsed (Visible = True, isCollapsed = True, allowCollapse = True)
   if (isCollapsed && allowCollapse) {
     return (
       <div className={`${s.mondayMessage} ${hasTeamsContext ? s.teams : ''}`}>
         <div className={s.container}>
-          <div className={s.header} onClick={toggleCollapse} style={{ cursor: 'pointer' }}>
-            <div className={s.title}>{collapsedLabel || titleText || "Monday Message"}</div>
-            <button className={s.collapseButton} aria-label="Expand">
+          <div className={s.collapsedBanner} onClick={toggleCollapse} style={{ cursor: 'pointer' }}>
+            {/* Re-using collapsedBanner style for consistency, or we could use a specific one */}
+            <span style={{ fontWeight: 600 }}>
+              {collapsedLabel || titleText || "Monday Message"}
+            </span>
+            <button className={s.collapseButton} aria-label="Expand" style={{ position: 'relative', top: 0, right: 0 }}>
               <Icon iconName="ChevronDown" />
             </button>
           </div>

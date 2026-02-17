@@ -46,9 +46,12 @@
 }
 
 .collapseButton {
+  /* Positioned relative to the parent header or banner */
   position: absolute;
-  top: 10px;
+  top: 50%;
   right: 10px;
+  transform: translateY(-50%);
+
   background: rgba(255, 255, 255, 0.7);
   /* translucent background for visibility */
   border-radius: 50%;
